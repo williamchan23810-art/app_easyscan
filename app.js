@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pipeline State Variables
     let activeSource = 'webcam'; // 'webcam', 'aged', 'glare', 'file'
     let gridRatio = '9:16'; // '9:16' Portrait Lock
-    let autoCapture = true;
+    let autoCapture = false;
     let cameraStream = null;
     let webcamVideo = null;
     let testImageAged = null;
@@ -419,7 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const captureBlocked = glareBlocked || tiltBlocked;
-        if (captureBlocked) {
+        // In Custom/Manual mode, the shutter button is never disabled (Request 1)
+        if (captureBlocked && autoCapture) {
             btnShutter.classList.add('shutter-disabled');
         } else {
             btnShutter.classList.remove('shutter-disabled');
@@ -460,30 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Draw snappy quad contours with color-coded dashboard states
-        overlayCtx.lineWidth = 3;
-        if (glareBlocked) {
-            overlayCtx.strokeStyle = 'var(--accent-red)';
-        } else if (tiltBlocked) {
-            overlayCtx.strokeStyle = '#F59E0B'; // Amber Orange
-        } else if (isAligned) {
-            overlayCtx.strokeStyle = 'var(--accent-green)';
-        } else {
-            overlayCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        }
-        overlayCtx.beginPath();
-        overlayCtx.moveTo(corners[0].x, corners[0].y);
-        overlayCtx.lineTo(corners[1].x, corners[1].y);
-        overlayCtx.lineTo(corners[2].x, corners[2].y);
-        overlayCtx.lineTo(corners[3].x, corners[3].y);
-        overlayCtx.closePath();
-        overlayCtx.stroke();
-
-        // Draw bounding box center focus marker
-        if (isAligned && !captureBlocked) {
-            overlayCtx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-            overlayCtx.fill();
-        }
+        // Bounding box outline and center focus marker drawing removed for clean camera view
 
         // Auto-Capture countdown timer SVG & Capture triggering logic
         if (autoCapture) {
@@ -563,6 +541,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Capture triggering
     const triggerCapture = () => {
         if (captureCoolDown) return;
+        
+        // Enforce 100-scans capacity limit (Request 6)
+        if (scanDatabase.length >= 100) {
+            alert("Album full! Please download or delete photos to scan more.");
+            return;
+        }
+
         captureCoolDown = true;
         boundaryStableFrames = 0;
 
@@ -930,10 +915,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    btnShutter.addEventListener('click', () => {
-        // Shutter manual trigger overriding auto checks
+    const onShutterTrigger = (e) => {
+        if (e) e.preventDefault();
         triggerCapture();
-    });
+    };
+    btnShutter.addEventListener('click', onShutterTrigger);
+    btnShutter.addEventListener('touchstart', onShutterTrigger, { passive: false });
 
     if (cameraSelect) {
         cameraSelect.addEventListener('change', (e) => {
@@ -983,22 +970,142 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseModal.addEventListener('click', closeModal);
     btnModalCloseAction.addEventListener('click', closeModal);
 
-    // Folder and logo button links
-    const folderBtn = document.getElementById('folder-btn');
-    if (folderBtn) {
-        folderBtn.addEventListener('click', () => {
-            const gallerySection = document.getElementById('gallery-grid');
-            if (gallerySection) {
-                gallerySection.scrollIntoView({ behavior: 'smooth' });
-                // Briefly flash a highlight on the gallery section
-                const galleryPanel = gallerySection.closest('.dashboard-panel');
-                if (galleryPanel) {
-                    galleryPanel.style.boxShadow = '0 0 25px var(--accent-blue-glow)';
-                    setTimeout(() => {
-                        galleryPanel.style.boxShadow = '';
-                    }, 1000);
-                }
+    // Photo Album Gallery Modal Management (Request 3, 5, 7, 8)
+    let selectedPhotoIndices = new Set();
+
+    const albumGrid = document.getElementById('album-grid');
+    const albumEmptyState = document.getElementById('album-empty-state');
+    const galleryBadgeCount = document.getElementById('gallery-badge-count');
+    const albumUsageBar = document.getElementById('album-usage-bar');
+    const btnRemoveSelected = document.getElementById('btn-remove-selected');
+    const deleteSelectedCount = document.getElementById('delete-selected-count');
+
+    const updateAlbumGalleryUI = () => {
+        if (!albumGrid) return;
+        albumGrid.innerHTML = '';
+        
+        const count = scanDatabase.length;
+        if (galleryBadgeCount) galleryBadgeCount.textContent = count;
+        if (albumUsageBar) albumUsageBar.style.width = `${(count / 100) * 100}%`;
+        
+        if (count === 0) {
+            if (albumEmptyState) albumEmptyState.style.display = 'flex';
+        } else {
+            if (albumEmptyState) albumEmptyState.style.display = 'none';
+            
+            scanDatabase.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = `album-item-card ${selectedPhotoIndices.has(index) ? 'selected' : ''}`;
+                card.dataset.index = index;
+                
+                const checkbox = document.createElement('div');
+                checkbox.className = 'album-item-checkbox';
+                
+                const img = document.createElement('img');
+                img.className = 'album-item-img';
+                // Compress thumbnails to avoid data uri lag
+                img.src = item.restoredCanvas.toDataURL('image/jpeg', 0.4);
+                
+                card.appendChild(checkbox);
+                card.appendChild(img);
+                
+                // Clicking checkbox selects; clicking anywhere else opens comparison slider
+                card.addEventListener('click', (e) => {
+                    const isCheckbox = e.target.closest('.album-item-checkbox');
+                    if (isCheckbox) {
+                        e.stopPropagation();
+                        togglePhotoSelection(index);
+                    } else {
+                        openCompareModalForIndex(index);
+                    }
+                });
+                
+                albumGrid.appendChild(card);
+            });
+        }
+        
+        updateRemoveButtonState();
+    };
+
+    const togglePhotoSelection = (index) => {
+        if (selectedPhotoIndices.has(index)) {
+            selectedPhotoIndices.delete(index);
+        } else {
+            selectedPhotoIndices.add(index);
+        }
+        updateAlbumGalleryUI();
+    };
+
+    const updateRemoveButtonState = () => {
+        if (!btnRemoveSelected) return;
+        const size = selectedPhotoIndices.size;
+        if (size > 0) {
+            btnRemoveSelected.disabled = false;
+            if (deleteSelectedCount) deleteSelectedCount.textContent = size;
+        } else {
+            btnRemoveSelected.disabled = true;
+            if (deleteSelectedCount) deleteSelectedCount.textContent = '0';
+        }
+    };
+
+    const openCompareModalForIndex = (index) => {
+        const item = scanDatabase[index];
+        if (!item) return;
+        
+        exifFilename.textContent = item.exif.filename;
+        exifDirectory.textContent = item.exif.directory;
+        exifFormat.textContent = item.exif.format;
+        
+        const beforeCtx = canvasBefore.getContext('2d');
+        canvasBefore.width = item.rawCanvas.width;
+        canvasBefore.height = item.rawCanvas.height;
+        beforeCtx.drawImage(item.rawCanvas, 0, 0);
+        
+        const afterCtx = canvasAfter.getContext('2d');
+        canvasAfter.width = item.restoredCanvas.width;
+        canvasAfter.height = item.restoredCanvas.height;
+        afterCtx.drawImage(item.restoredCanvas, 0, 0);
+        
+        btnDownloadScan.href = item.restoredCanvas.toDataURL('image/jpeg', 0.95);
+        btnDownloadScan.download = item.exif.filename;
+        
+        compareModal.classList.add('show');
+    };
+
+    // Removal button event listener (Request 8)
+    if (btnRemoveSelected) {
+        btnRemoveSelected.addEventListener('click', () => {
+            const remainingScans = scanDatabase.filter((_, index) => !selectedPhotoIndices.has(index));
+            scanDatabase.length = 0;
+            remainingScans.forEach(item => scanDatabase.push(item));
+            
+            selectedPhotoIndices.clear();
+            updateAlbumGalleryUI();
+            
+            // Sync counts
+            const badge = document.getElementById('folder-badge-count');
+            if (badge) {
+                badge.textContent = scanDatabase.length;
             }
+            updateGalleryUI();
+        });
+    }
+
+    // Toggle slide-up gallery modal sheets (Request 3 & 5)
+    const folderBtn = document.getElementById('folder-btn');
+    const albumGalleryModal = document.getElementById('album-gallery-modal');
+    const btnCloseGallery = document.getElementById('btn-close-gallery');
+    
+    if (folderBtn && albumGalleryModal) {
+        folderBtn.addEventListener('click', () => {
+            updateAlbumGalleryUI();
+            albumGalleryModal.classList.add('show');
+        });
+    }
+
+    if (btnCloseGallery && albumGalleryModal) {
+        btnCloseGallery.addEventListener('click', () => {
+            albumGalleryModal.classList.remove('show');
         });
     }
 
@@ -1108,6 +1215,19 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTestImages();
     updateTargetGridUI();
     initSliderDrag();
+
+    // Set default starting mode to Custom/Manual scan (Request 9)
+    autoCapture = false;
+    const optAuto = document.getElementById('opt-auto');
+    const optManual = document.getElementById('opt-manual');
+    const modeSlider = document.getElementById('mode-slider');
+    if (optAuto && optManual && modeSlider) {
+        optAuto.classList.remove('active');
+        optManual.classList.add('active');
+        modeSlider.style.left = '50%';
+    }
+    shutterTimerFill.classList.add('greyed');
+    shutterTimerFill.style.strokeDashoffset = '175.93';
     
     // Boot-to-Camera startup triggers
     if (activeSource === 'webcam') {

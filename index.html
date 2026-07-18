@@ -34,13 +34,7 @@
                     <p class="tagline">5-Stage Operational Photo Scanning Engine</p>
                 </div>
             </div>
-            <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
-                <button class="btn btn-secondary" id="btn-toggle-dashboard" style="display: flex; align-items: center; gap: 6px;">🖥️ Developer Dashboard</button>
-                <div class="system-time">
-                    <span class="time-label">OPERATIONAL TIME:</span>
-                    <span class="time-value" id="live-clock">2026-07-18 07:37:07</span>
-                </div>
-            </div>
+            <div class="header-right" style="display: none;"></div>
         </header>
 
         <!-- Main Body -->
@@ -116,18 +110,18 @@
 
                             <!-- Bottom Viewfinder Coaching Text -->
                             <div class="viewfinder-coaching-text">
-                                Choose between Auto and Manual Scan
+                                Choose between Auto and Custom Scan
                             </div>
                         </div>
 
                         <!-- CellPhone Camera Bottom Bar Controls -->
                         <div class="phone-camera-bottom-bar">
-                            <!-- Dashboard Mode Switcher (Auto/Manual Toggle) -->
+                            <!-- Dashboard Mode Switcher (Auto/Custom Toggle) -->
                             <div class="mode-switch-container">
                                 <div class="mode-switch" id="mode-selector">
                                     <div class="mode-slider" id="mode-slider"></div>
                                     <span class="mode-option active" data-mode="auto" id="opt-auto">Auto</span>
-                                    <span class="mode-option" data-mode="manual" id="opt-manual">Manual</span>
+                                    <span class="mode-option" data-mode="manual" id="opt-manual">Custom</span>
                                 </div>
                             </div>
 
@@ -168,6 +162,35 @@
                             <!-- 2. EASY SCAN letterings -->
                             <div class="studio-signature">
                                 EASY SCAN
+                            </div>
+
+                            <!-- Photo Album Gallery Slide-up Sheet (iPhone Photos Style) -->
+                            <div id="album-gallery-modal" class="album-modal">
+                                <div class="album-modal-content">
+                                    <div class="album-modal-header">
+                                        <span class="album-modal-title">Album (<span id="gallery-badge-count">0</span>/100)</span>
+                                        <button class="album-modal-close" id="btn-close-gallery">&times;</button>
+                                    </div>
+                                    
+                                    <div class="album-modal-body">
+                                        <div id="album-empty-state" class="album-empty">
+                                            <span class="album-empty-icon">📖</span>
+                                            <p style="margin: 4px 0 0 0; font-size: 13px;">No photos in this album yet.</p>
+                                        </div>
+                                        <div id="album-grid" class="album-grid">
+                                            <!-- Dynamic items loaded here -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="album-modal-footer">
+                                        <button class="btn" id="btn-remove-selected" disabled>
+                                             Delete Selected (<span id="delete-selected-count">0</span>)
+                                        </button>
+                                        <div class="album-usage-bar-wrap">
+                                            <div class="album-usage-bar" id="album-usage-bar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -334,8 +357,7 @@
         </div>
     </div>
 
-    <!-- Floating Dev Settings Toggle Button (Hidden when dashboard is open) -->
-    <button id="btn-floating-dev" class="btn-floating-dev" title="Developer Diagnostics Mode">⚙️</button>
+
 
     <!-- CV and App logic scripts -->
     <script src="cv-engine.js"></script>
