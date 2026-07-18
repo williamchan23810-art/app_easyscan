@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyScan - Operational Document & Photo Scanning Pipeline</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-icon">📸</span>
+                <div class="logo-text">
+                    <h1>EasyScan</h1>
+                    <p class="tagline">5-Stage Operational Photo Scanning Engine</p>
+                </div>
+            </div>
+            <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
+                <button class="btn btn-secondary" id="btn-toggle-dashboard" style="display: flex; align-items: center; gap: 6px;">🖥️ Developer Dashboard</button>
+                <div class="system-time">
+                    <span class="time-label">OPERATIONAL TIME:</span>
+                    <span class="time-value" id="live-clock">2026-07-18 07:37:07</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="app-main">
+            <!-- Left Side: Smartphone Camera Simulation -->
+            <section class="viewport-section">
+                <div class="smartphone-frame">
+                    <div class="smartphone-screen">
+                        <!-- Camera Preview Canvas Container -->
+                        <div class="camera-viewport-container" id="viewport-container">
+                            <canvas id="camera-preview-canvas" width="640" height="480"></canvas>
+                            
+                            <!-- Top Menu Overlays (translucent settings inside viewfinder) -->
+                            <div class="viewport-settings-overlay" style="display: none;">
+                                <input type="file" id="file-uploader" style="display: none;" accept="image/*">
+                            </div>
+
+                            <!-- Static Target Grid Layer (Overlay) -->
+                            <div class="target-grid-overlay" id="target-grid">
+                                <div class="grid-border"></div>
+                                <div class="grid-lines">
+                                    <div class="grid-line-h"></div>
+                                    <div class="grid-line-h"></div>
+                                    <div class="grid-line-v"></div>
+                                    <div class="grid-line-v"></div>
+                                </div>
+                            </div>
+
+                            <!-- Real-time Contour & Corners Snapping Canvas -->
+                            <canvas id="overlay-canvas" width="640" height="480"></canvas>
+
+                            <!-- Draggable Corner Handles -->
+                            <div class="corner-handle" id="handle-0" data-index="0"></div>
+                            <div class="corner-handle" id="handle-1" data-index="1"></div>
+                            <div class="corner-handle" id="handle-2" data-index="2"></div>
+                            <div class="corner-handle" id="handle-3" data-index="3"></div>
+
+                            <!-- Glare Alert Coaching Overlay -->
+                            <div class="glare-alert-overlay" id="glare-alert">
+                                <div class="alert-icon">⚠️</div>
+                                <div class="alert-text">
+                                    <h3>Overhead reflection detected</h3>
+                                    <p>Tilt phone slightly to reduce glare under 10%</p>
+                                </div>
+                            </div>
+
+                            <!-- Tilt Alert Coaching Overlay -->
+                            <div class="tilt-alert-overlay" id="tilt-alert">
+                                <div class="alert-icon">📐</div>
+                                <div class="alert-text">
+                                    <h3>Angle too steep</h3>
+                                    <p>Hold phone flatter to correct perspective tilt</p>
+                                </div>
+                            </div>
+
+                            <!-- Saved Toast Notification Layer -->
+                            <div class="saved-toast-overlay" id="saved-toast">
+                                <div class="toast-icon">💾</div>
+                                <div class="toast-text">
+                                    <h3 id="toast-filename">Scan_074406.jpg</h3>
+                                    <p>Saved to folder successfully</p>
+                                </div>
+                            </div>
+
+                            <!-- Shutter Confirmation Flash Layer -->
+                            <div class="shutter-flash" id="shutter-flash"></div>
+
+                            <!-- Camera Loading/Ready Status Overlay -->
+                            <div class="camera-status-overlay" id="camera-loading">
+                                <div class="spinner"></div>
+                                <p>INITIALIZING HARDWARE CAMERA THREAD...</p>
+                            </div>
+
+                            <!-- Bottom Viewfinder Coaching Text -->
+                            <div class="viewfinder-coaching-text">
+                                Choose between Auto and Manual Scan
+                            </div>
+                        </div>
+
+                        <!-- CellPhone Camera Bottom Bar Controls -->
+                        <div class="phone-camera-bottom-bar">
+                            <!-- Dashboard Mode Switcher (Auto/Manual Toggle) -->
+                            <div class="mode-switch-container">
+                                <div class="mode-switch" id="mode-selector">
+                                    <div class="mode-slider" id="mode-slider"></div>
+                                    <span class="mode-option active" data-mode="auto" id="opt-auto">Auto</span>
+                                    <span class="mode-option" data-mode="manual" id="opt-manual">Manual</span>
+                                </div>
+                            </div>
+
+                            <div class="phone-bottom-main-row">
+                                <!-- 1. Photo Album Icon (3D Open/Close Book) -->
+                                <button class="bottom-icon-btn" id="folder-btn" title="View Scanned Folder">
+                                    <div class="folder-icon-circle">
+                                        <div class="book-3d" id="book-3d">
+                                            <div class="book-back"></div>
+                                            <div class="book-pages"></div>
+                                            <div class="book-front" id="book-front">
+                                                <img src="assets/photo_album_icon.jpg" alt="Photo Album" class="photo-album-img">
+                                            </div>
+                                        </div>
+                                        <span class="folder-badge" id="folder-badge-count">0</span>
+                                    </div>
+                                </button>
+
+                                <!-- Shutter Button with Countdown SVG -->
+                                <div class="bottom-shutter-wrap">
+                                    <div class="shutter-timer-svg-wrap">
+                                        <svg width="64" height="64" viewBox="0 0 64 64" class="timer-svg">
+                                            <circle class="timer-track" cx="32" cy="32" r="28"></circle>
+                                            <circle class="timer-fill" id="shutter-timer-fill" cx="32" cy="32" r="28" style="stroke-dasharray: 175.93; stroke-dashoffset: 175.93;"></circle>
+                                        </svg>
+                                        <button id="btn-shutter">
+                                            <span class="shutter-inner"></span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Studio Logo Icon -->
+                                <button class="bottom-icon-btn" id="easyscan-logo-btn" title="EasyScan Details">
+                                    <img src="assets/williamhchan_studio_logo.jpg" alt="WHC Logo Icon" class="easyscan-logo-img">
+                                </button>
+                            </div>
+
+                            <!-- 2. EASY SCAN letterings -->
+                            <div class="studio-signature">
+                                EASY SCAN
+                            </div>
+                        </div>
+                    </div>
+                    <div class="phone-home-indicator"></div>
+                </div>
+            </section>
+
+            <!-- Right Side: Diagnostics, Queue & Serialized Storage -->
+            <section class="dashboard-section">
+                <!-- Panel 1: Stage 3 Analytics Metrics -->
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">📊</span>
+                        <h2>Stage 3: Live Analytics Dashboard</h2>
+                    </div>
+                    <div class="panel-body grid-2-col">
+                        <div class="metric-card">
+                            <span class="metric-label">LUMINANCE GLARE RATIO</span>
+                            <div class="glare-gauge-container">
+                                <div class="glare-gauge-fill" id="glare-gauge-fill" style="width: 0%"></div>
+                                <span class="glare-gauge-val" id="glare-gauge-val">0.0%</span>
+                            </div>
+                            <div class="metric-caption" id="glare-status">SAFE - AUTO-CAPTURE READY</div>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">BOUNDARY DETECTION STATUS</span>
+                            <div class="boundary-status" id="boundary-status">
+                                <span class="status-dot green"></span>
+                                <span class="status-text">QUADRILATERAL ALIGNED</span>
+                            </div>
+                            <div class="metric-caption">4 Vertices Locked within Sweet Spot</div>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">ENGINE INITS (STAGE 1)</span>
+                            <div class="status-grid">
+                                <div class="status-item"><span class="status-dot green"></span> UI Render (60fps)</div>
+                                <div class="status-item"><span class="status-dot green" id="camera-hardware-dot"></span> Camera HAL Thread</div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">HARDWARE CAPTURE PROFILE</span>
+                            <div class="profile-details">
+                                <div>Focus: <span class="highlight">Continuous AF (20-40cm)</span></div>
+                                <div>Exposure: <span class="highlight">Global Real-Time Matrix</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Stage 4 Asynchronous Decoupled Queue -->
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">⚙️</span>
+                        <h2>Stage 4: Asynchronous Processing Queue</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="queue-status-bar">
+                            <div class="queue-info">
+                                <span>Active Queue Load: <span class="highlight" id="queue-load">0 tasks</span></span>
+                                <span>UI Shutter Frame Latency: <span class="highlight" id="ui-latency">-- ms</span></span>
+                            </div>
+                            <div class="queue-indicator" id="queue-indicator">IDLE</div>
+                        </div>
+                        <div class="worker-pool">
+                            <div class="worker-card">
+                                <div class="worker-header">
+                                    <span>Thread A: Warp Engine (Metal/Vulkan Direct)</span>
+                                    <span class="worker-status" id="worker-warp-status">IDLE</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill" id="worker-warp-progress" style="width: 0%"></div>
+                                </div>
+                                <div class="worker-info" id="worker-warp-info">Ready to extract geometric coordinates.</div>
+                            </div>
+                            <div class="worker-card">
+                                <div class="worker-header">
+                                    <span>Thread B: Smart Restoration Engine (NPU Core)</span>
+                                    <span class="worker-status" id="worker-rest-status">IDLE</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill" id="worker-rest-progress" style="width: 0%"></div>
+                                </div>
+                                <div class="worker-info" id="worker-rest-info">Matrix adjustments loaded.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Stage 5 Serialized Storage Grid -->
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">💾</span>
+                        <h2>Stage 5: Serialized File System</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="dir-header">
+                            <span class="dir-icon">📁</span>
+                            <span class="dir-path" id="dir-path">/EasyScan_Scans_2026-07-18/</span>
+                            <span class="dir-count" id="dir-count">0 items</span>
+                        </div>
+                        <div class="gallery-grid" id="gallery-grid">
+                            <div class="gallery-empty" id="gallery-empty">
+                                <p>No scans written to disk yet.</p>
+                                <p class="subtext">Tap shutter or line up a test photo with Auto-Capture enabled.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Slider Comparison Modal / Split Screen Overlay -->
+        <div class="modal-overlay" id="compare-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Scan Processed & Serialized Successfully</h2>
+                    <button class="btn-close" id="btn-close-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Image Comparison Container -->
+                    <div class="comparison-slider" id="comparison-slider">
+                        <!-- Before (Original Image, skewed, aged, glare) -->
+                        <div class="comparison-image-before">
+                            <canvas id="compare-canvas-before"></canvas>
+                            <span class="badge badge-before">RAW CAMERA FRAME</span>
+                        </div>
+                        <!-- After (Processed Image, warped, restored) -->
+                        <div class="comparison-image-after" id="comparison-image-after">
+                            <canvas id="compare-canvas-after"></canvas>
+                            <span class="badge badge-after">RESTORED IMAGE</span>
+                        </div>
+                        <!-- Slider Control Handle -->
+                        <div class="slider-handle" id="slider-handle">
+                            <div class="handle-arrow-left"></div>
+                            <div class="handle-line"></div>
+                            <div class="handle-arrow-right"></div>
+                        </div>
+                    </div>
+
+                    <!-- Scan metadata panel -->
+                    <div class="exif-data-panel">
+                        <h3><span class="icon">🏷️</span> FILE SAVED INFORMATION</h3>
+                        <div class="exif-grid">
+                            <div class="exif-item">
+                                <span class="exif-label">Filename:</span>
+                                <span class="exif-val highlight" id="exif-filename">Scan_073707.jpg</span>
+                            </div>
+                            <div class="exif-item">
+                                <span class="exif-label">Folder Location:</span>
+                                <span class="exif-val" id="exif-directory">/EasyScan_Scans_2026-07-18/</span>
+                            </div>
+                            <div class="exif-item">
+                                <span class="exif-label">Resolution & Format:</span>
+                                <span class="exif-val" id="exif-format">800 x 600 • JPEG (95% Quality)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btn-modal-close-action">Back to Camera</button>
+                    <a href="#" class="btn btn-primary" id="btn-download-scan" download="Scan_Image.jpg">Download JPEG</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Dev Settings Toggle Button (Hidden when dashboard is open) -->
+    <button id="btn-floating-dev" class="btn-floating-dev" title="Developer Diagnostics Mode">⚙️</button>
+
+    <!-- CV and App logic scripts -->
+    <script src="cv-engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
