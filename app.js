@@ -130,7 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const hh = String(d.getHours()).padStart(2, '0');
         const mm = String(d.getMinutes()).padStart(2, '0');
         const ss = String(d.getSeconds()).padStart(2, '0');
-        liveClock.textContent = `2026-07-18 ${hh}:${mm}:${ss}`;
+        if (liveClock) {
+            liveClock.textContent = `2026-07-18 ${hh}:${mm}:${ss}`;
+        }
     }, 1000);
 
     // Grid sweet spot boundary dimensions mapping
@@ -849,6 +851,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal split-slider dragging mechanics
     const initSliderDrag = () => {
+        if (!comparisonSlider) return; // Safeguard if slider is removed (Request 1)
         let isDragging = false;
 
         const setSliderWidth = (clientX) => {
