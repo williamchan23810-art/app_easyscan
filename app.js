@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let tiltBlocked = false;
         if (maxTiltSkew >= 0.18) {
-            tiltAlertOverlay.classList.add('show');
+            // tiltAlertOverlay.classList.add('show'); // Visual yellow alert popup removed (Request 3)
             tiltBlocked = true;
         } else {
             tiltAlertOverlay.classList.remove('show');

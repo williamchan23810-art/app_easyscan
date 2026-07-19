@@ -19,6 +19,14 @@
     <meta name="twitter:description" content="A premium 5-stage vertical photo-scanning and restoration app featuring automatic perspective warping, glare removal, and age correction.">
     <meta name="twitter:image" content="https://app-easyscan.netlify.app/assets/williamhchan_studio_logo.jpg">
 
+    <!-- iOS App Icon (Add to Home Screen Web Clip) (Request 4) -->
+    <link rel="apple-touch-icon" href="assets/williamhchan_studio_logo.jpg">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/williamhchan_studio_logo.jpg">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/williamhchan_studio_logo.jpg">
+    <link rel="apple-touch-icon" sizes="167x167" href="assets/williamhchan_studio_logo.jpg">
+    <link rel="icon" type="image/jpeg" sizes="32x32" href="assets/williamhchan_studio_logo.jpg">
+    <link rel="icon" type="image/jpeg" sizes="16x16" href="assets/williamhchan_studio_logo.jpg">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -304,50 +312,24 @@
             </section>
         </main>
 
-        <!-- Slider Comparison Modal / Split Screen Overlay -->
+        <!-- Inspect Photo Preview Modal Overlay (Request 1, 2, 3) -->
         <div class="modal-overlay" id="compare-modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Scan Processed & Serialized Successfully</h2>
+                    <h2>Scan Saved</h2>
                     <button class="btn-close" id="btn-close-modal">×</button>
                 </div>
                 <div class="modal-body">
-                    <!-- Image Comparison Container -->
-                    <div class="comparison-slider" id="comparison-slider">
-                        <!-- Before (Original Image, skewed, aged, glare) -->
-                        <div class="comparison-image-before">
-                            <canvas id="compare-canvas-before"></canvas>
-                            <span class="badge badge-before">RAW CAMERA FRAME</span>
-                        </div>
-                        <!-- After (Processed Image, warped, restored) -->
-                        <div class="comparison-image-after" id="comparison-image-after">
-                            <canvas id="compare-canvas-after"></canvas>
-                            <span class="badge badge-after">RESTORED IMAGE</span>
-                        </div>
-                        <!-- Slider Control Handle -->
-                        <div class="slider-handle" id="slider-handle">
-                            <div class="handle-arrow-left"></div>
-                            <div class="handle-line"></div>
-                            <div class="handle-arrow-right"></div>
-                        </div>
-                    </div>
-
-                    <!-- Scan metadata panel -->
-                    <div class="exif-data-panel">
-                        <h3><span class="icon">🏷️</span> FILE SAVED INFORMATION</h3>
-                        <div class="exif-grid">
-                            <div class="exif-item">
-                                <span class="exif-label">Filename:</span>
-                                <span class="exif-val highlight" id="exif-filename">Scan_073707.jpg</span>
-                            </div>
-                            <div class="exif-item">
-                                <span class="exif-label">Folder Location:</span>
-                                <span class="exif-val" id="exif-directory">/EasyScan_Scans_2026-07-18/</span>
-                            </div>
-                            <div class="exif-item">
-                                <span class="exif-label">Resolution & Format:</span>
-                                <span class="exif-val" id="exif-format">800 x 600 • JPEG (95% Quality)</span>
-                            </div>
+                    <!-- Single Restored Image Container -->
+                    <div class="scan-preview-container">
+                        <canvas id="compare-canvas-after"></canvas>
+                        <div class="scan-filename-label" id="exif-filename">Scan_073707.jpg</div>
+                        
+                        <!-- Keep hidden variables to prevent JavaScript reference errors -->
+                        <canvas id="compare-canvas-before" style="display: none;"></canvas>
+                        <div style="display: none;">
+                            <span id="exif-directory"></span>
+                            <span id="exif-format"></span>
                         </div>
                     </div>
                 </div>
