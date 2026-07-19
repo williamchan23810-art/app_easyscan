@@ -27,42 +27,39 @@ const CVEngine = {
             return 0.299 * data[idx] + 0.587 * data[idx+1] + 0.114 * data[idx+2];
         };
 
-        // Scan from the center of targetGrid outwards to the 4 corners of the canvas
+        // Scan from the center of targetGrid outwards, passing directly through the target grid corners
         const cx = targetGrid.x + targetGrid.width / 2;
         const cy = targetGrid.y + targetGrid.height / 2;
 
-        const endpoints = [
-            { x: 0, y: 0 }, // TL
-            { x: width - 1, y: 0 }, // TR
-            { x: width - 1, y: height - 1 }, // BR
-            { x: 0, y: height - 1 } // BL
-        ];
-
         for (let i = 0; i < 4; i++) {
-            const end = endpoints[i];
-            
-            // We scan outwards from center (t=0) to the endpoint (t=1).
-            // We search for a sharp gradient spike. Since documents are rectangular,
-            // the transition from document edge to background has a sharp luma change.
+            const cornerX = corners[i].x;
+            const cornerY = corners[i].y;
+
+            // Compute direction vector from center to the target grid corner
+            const vx = cornerX - cx;
+            const vy = cornerY - cy;
+            const len = Math.hypot(vx, vy);
+            const dx = vx / len;
+            const dy = vy / len;
+
             let maxGrad = 0;
-            let bestX = corners[i].x;
-            let bestY = corners[i].y;
+            let bestX = cornerX;
+            let bestY = cornerY;
 
             let prevLuma = null;
-            const steps = 150;
-            
-            // We scan the portion of the diagonal where the document boundary is expected
-            // (from t=0.2 to t=0.95 of the path)
-            for (let s = 30; s < steps; s++) {
-                const t = s / steps;
-                const px = cx + (end.x - cx) * t;
-                const py = cy + (end.y - cy) * t;
+            // Scan path: from 50 pixels inside the corner to 80 pixels outside the corner
+            const scanMin = -50;
+            const scanMax = 80;
+
+            for (let step = scanMin; step <= scanMax; step++) {
+                const px = cornerX + dx * step;
+                const py = cornerY + dy * step;
 
                 const luma = getLuma(px, py);
                 if (prevLuma !== null) {
                     const grad = Math.abs(luma - prevLuma);
-                    // We look for a local peak in gradient. If it's a strong edge, we record it.
-                    if (grad > maxGrad && grad > 10) {
+                    // Detect the sharpest change in contrast (highest gradient)
+                    if (grad > maxGrad && grad > 8) {
                         maxGrad = grad;
                         bestX = Math.round(px);
                         bestY = Math.round(py);
