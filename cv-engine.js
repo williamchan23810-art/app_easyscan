@@ -21,53 +21,62 @@ const CVEngine = {
             { x: targetGrid.x, y: targetGrid.y + targetGrid.height } // Bottom-Left
         ];
 
-        // Let's refine each corner by scanning along diagonals from the image edges inward.
-        // We look for a sharp change in contrast (the edge of the paper photo).
-        const searchDirections = [
-            { start: { x: 0, y: 0 }, end: { x: width * 0.4, y: height * 0.4 }, idx: 0 }, // TL
-            { start: { x: width - 1, y: 0 }, end: { x: width * 0.6, y: height * 0.4 }, idx: 1 }, // TR
-            { start: { x: width - 1, y: height - 1 }, end: { x: width * 0.6, y: height * 0.6 }, idx: 2 }, // BR
-            { start: { x: 0, y: height - 1 }, end: { x: width * 0.4, y: height * 0.6 }, idx: 3 } // BL
+        const getLuma = (x, y) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return 128;
+            const idx = (Math.round(y) * width + Math.round(x)) * 4;
+            return 0.299 * data[idx] + 0.587 * data[idx+1] + 0.114 * data[idx+2];
+        };
+
+        // Scan from the center of targetGrid outwards to the 4 corners of the canvas
+        const cx = targetGrid.x + targetGrid.width / 2;
+        const cy = targetGrid.y + targetGrid.height / 2;
+
+        const endpoints = [
+            { x: 0, y: 0 }, // TL
+            { x: width - 1, y: 0 }, // TR
+            { x: width - 1, y: height - 1 }, // BR
+            { x: 0, y: height - 1 } // BL
         ];
 
-        searchDirections.forEach(dir => {
-            let bestX = corners[dir.idx].x;
-            let bestY = corners[dir.idx].y;
+        for (let i = 0; i < 4; i++) {
+            const end = endpoints[i];
+            
+            // We scan outwards from center (t=0) to the endpoint (t=1).
+            // We search for a sharp gradient spike. Since documents are rectangular,
+            // the transition from document edge to background has a sharp luma change.
             let maxGrad = 0;
-            const steps = 100;
+            let bestX = corners[i].x;
+            let bestY = corners[i].y;
 
             let prevLuma = null;
+            const steps = 150;
+            
+            // We scan the portion of the diagonal where the document boundary is expected
+            // (from t=0.2 to t=0.95 of the path)
+            for (let s = 30; s < steps; s++) {
+                const t = s / steps;
+                const px = cx + (end.x - cx) * t;
+                const py = cy + (end.y - cy) * t;
 
-            for (let i = 0; i < steps; i++) {
-                const t = i / steps;
-                const x = Math.round(dir.start.x + (dir.end.x - dir.start.x) * t);
-                const y = Math.round(dir.start.y + (dir.end.y - dir.start.y) * t);
-
-                if (x < 0 || x >= width || y < 0 || y >= height) continue;
-
-                const idx = (y * width + x) * 4;
-                const r = data[idx];
-                const g = data[idx + 1];
-                const b = data[idx + 2];
-                const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-
+                const luma = getLuma(px, py);
                 if (prevLuma !== null) {
                     const grad = Math.abs(luma - prevLuma);
-                    if (grad > maxGrad && grad > 15) { // Edge threshold
+                    // We look for a local peak in gradient. If it's a strong edge, we record it.
+                    if (grad > maxGrad && grad > 10) {
                         maxGrad = grad;
-                        bestX = x;
-                        bestY = y;
+                        bestX = Math.round(px);
+                        bestY = Math.round(py);
                     }
                 }
                 prevLuma = luma;
             }
 
-            // Only update if a strong edge is detected
-            if (maxGrad > 15) {
-                corners[dir.idx].x = bestX;
-                corners[dir.idx].y = bestY;
+            // If a valid edge was found, snap to it!
+            if (maxGrad > 10) {
+                corners[i].x = bestX;
+                corners[i].y = bestY;
             }
-        });
+        }
 
         return corners;
     },

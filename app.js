@@ -460,7 +460,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Bounding box outline and center focus marker drawing removed for clean camera view
+        // Draw a clean, glowing green boundary outline around detected corners for real-time visual feedback
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(corners[0].x, corners[0].y);
+        overlayCtx.lineTo(corners[1].x, corners[1].y);
+        overlayCtx.lineTo(corners[2].x, corners[2].y);
+        overlayCtx.lineTo(corners[3].x, corners[3].y);
+        overlayCtx.closePath();
+        overlayCtx.lineWidth = 2.5;
+        overlayCtx.strokeStyle = isAligned ? 'rgba(16, 185, 129, 0.95)' : 'rgba(255, 255, 255, 0.45)';
+        overlayCtx.shadowColor = isAligned ? '#10B981' : 'transparent';
+        overlayCtx.shadowBlur = isAligned ? 8 : 0;
+        overlayCtx.stroke();
+        overlayCtx.shadowBlur = 0; // reset shadow
 
         // Auto-Capture countdown timer SVG & Capture triggering logic
         if (autoCapture) {
@@ -561,7 +573,9 @@ document.addEventListener('DOMContentLoaded', () => {
         rawFrame.height = previewCanvas.height;
         rawFrame.getContext('2d').drawImage(previewCanvas, 0, 0);
 
-        const currentCorners = JSON.parse(JSON.stringify(corners));
+        const targetGridSpecs = getTargetGridSpecs();
+        const detected = CVEngine.autoDetectCorners(previewCanvas, targetGridSpecs);
+        const currentCorners = JSON.parse(JSON.stringify(detected));
         const captureTimeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '');
 
         const scanItem = {
