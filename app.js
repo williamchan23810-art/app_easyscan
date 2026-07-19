@@ -650,20 +650,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 workerRestStatus.className = 'worker-status';
                 workerRestInfo.textContent = 'Restoration matrices applied.';
 
-                // Perform the actual CV computations on a temporary canvas (rotated for proper upright position) (Request 3)
-                const targetW = 1080;
-                const targetH = 1920;
+                // Perform the actual CV computations on a temporary canvas (rotated and aspect-ratio preserved) (Request 3)
+                const corners = item.corners;
+                const wTop = Math.hypot(corners[1].x - corners[0].x, corners[1].y - corners[0].y);
+                const wBottom = Math.hypot(corners[2].x - corners[3].x, corners[2].y - corners[3].y);
+                const hLeft = Math.hypot(corners[3].x - corners[0].x, corners[3].y - corners[0].y);
+                const hRight = Math.hypot(corners[2].x - corners[1].x, corners[2].y - corners[1].y);
 
-                const tempW = 1920;
-                const tempH = 1080;
+                const avgW = (wTop + wBottom) / 2;
+                const avgH = (hLeft + hRight) / 2;
+                const rawAspect = avgW / avgH;
+
+                let targetW, targetH;
+                if (avgW > avgH) {
+                    // Document is vertical (portrait) in real world
+                    targetW = 1080;
+                    targetH = Math.round(1080 * rawAspect);
+                } else {
+                    // Document is horizontal (landscape) in real world
+                    targetH = 1080;
+                    targetW = Math.round(1080 / rawAspect);
+                }
+
                 const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = tempW;
-                tempCanvas.height = tempH;
+                tempCanvas.width = targetH;
+                tempCanvas.height = targetW;
 
                 // 1. Warp perspective to native landscape sensor orientation first
                 CVEngine.warpPerspective(item.rawCanvas, tempCanvas, item.corners);
 
-                // 2. Rotate 90 degrees clockwise to align portrait upright
+                // 2. Rotate 90 degrees clockwise to align upright (Request 3)
                 const warpCanvas = document.createElement('canvas');
                 warpCanvas.width = targetW;
                 warpCanvas.height = targetH;
