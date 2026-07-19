@@ -180,9 +180,8 @@ body {
 #camera-preview-canvas {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     display: block;
-    background: #000;
 }
 
 #overlay-canvas {
@@ -209,8 +208,8 @@ body {
 }
 
 .target-grid-overlay.grid-9-16 {
-    width: 64.5%;
-    height: 85%;
+    width: 86%;
+    height: 90%;
 }
 
 .grid-border {

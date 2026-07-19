@@ -138,17 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Grid sweet spot boundary dimensions mapping
     // Grid sweet spot boundary dimensions mapping (9:16 Portrait Lock)
     const getTargetGridSpecs = () => {
-        const w = previewCanvas.width;  // 640
-        const h = previewCanvas.height; // 480
-        
-        // Height is limited, scale width to match 9:16 aspect ratio relative to container crop bounds
-        const gridH = h * 0.85;       // 408px
-        const gridW = gridH * (9/16); // 229.5px
+        // Large target grid box centered on the visible phone screen (Request 4)
         return {
-            x: (w - gridW) / 2,
-            y: (h - gridH) / 2,
-            width: gridW,
-            height: gridH
+            x: 178,
+            y: 24,
+            width: 284,
+            height: 432
         };
     };
 
