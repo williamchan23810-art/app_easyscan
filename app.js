@@ -255,6 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 webcamVideo = document.createElement('video');
                 webcamVideo.setAttribute('autoplay', '');
                 webcamVideo.setAttribute('playsinline', '');
+                webcamVideo.setAttribute('muted', '');
+                webcamVideo.muted = true;
             }
             webcamVideo.srcObject = cameraStream;
             
@@ -653,16 +655,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 workerRestStatus.className = 'worker-status';
                 workerRestInfo.textContent = 'Restoration matrices applied.';
 
-                // Perform the actual CV computations on a temporary canvas (1080x1920 Portrait)
+                // Perform the actual CV computations on a temporary canvas (rotated for proper upright position) (Request 3)
                 const targetW = 1080;
                 const targetH = 1920;
 
+                const tempW = 1920;
+                const tempH = 1080;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = tempW;
+                tempCanvas.height = tempH;
+
+                // 1. Warp perspective to native landscape sensor orientation first
+                CVEngine.warpPerspective(item.rawCanvas, tempCanvas, item.corners);
+
+                // 2. Rotate 90 degrees clockwise to align portrait upright
                 const warpCanvas = document.createElement('canvas');
                 warpCanvas.width = targetW;
                 warpCanvas.height = targetH;
-
-                // 1. Warp perspective
-                CVEngine.warpPerspective(item.rawCanvas, warpCanvas, item.corners);
+                const warpCtx = warpCanvas.getContext('2d');
+                warpCtx.translate(targetW, 0);
+                warpCtx.rotate(90 * Math.PI / 180);
+                warpCtx.drawImage(tempCanvas, 0, 0);
 
                 // Analyze yellow ratio before restoration for metadata logs
                 const analysisCtx = warpCanvas.getContext('2d');
@@ -1004,23 +1017,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const checkbox = document.createElement('div');
                 checkbox.className = 'album-item-checkbox';
                 
+                // Direct touch captures on iOS to prevent double-tap or block issues (Request 1)
+                const handleCheck = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    togglePhotoSelection(index);
+                };
+                checkbox.addEventListener('click', handleCheck);
+                checkbox.addEventListener('touchstart', handleCheck, { passive: false });
+                
                 const img = document.createElement('img');
                 img.className = 'album-item-img';
-                // Compress thumbnails to avoid data uri lag
                 img.src = item.restoredCanvas.toDataURL('image/jpeg', 0.4);
                 
                 card.appendChild(checkbox);
                 card.appendChild(img);
                 
-                // Clicking checkbox selects; clicking anywhere else opens comparison slider
-                card.addEventListener('click', (e) => {
-                    const isCheckbox = e.target.closest('.album-item-checkbox');
-                    if (isCheckbox) {
-                        e.stopPropagation();
-                        togglePhotoSelection(index);
-                    } else {
-                        openCompareModalForIndex(index);
-                    }
+                // Clicking the card itself opens the inspection preview
+                card.addEventListener('click', () => {
+                    openCompareModalForIndex(index);
                 });
                 
                 albumGrid.appendChild(card);
@@ -1091,6 +1106,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 badge.textContent = scanDatabase.length;
             }
             updateGalleryUI();
+        });
+    }
+
+    // Configure iOS download instruction overlay (Request 2)
+    if (btnDownloadScan) {
+        btnDownloadScan.setAttribute('target', '_blank');
+        btnDownloadScan.addEventListener('click', () => {
+            alert("Opening image in a new tab. Please press and hold the photo, then select 'Add to Photos' to save it to your iPhone library.");
         });
     }
 
